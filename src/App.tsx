@@ -1,50 +1,44 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Home, PlusSquare } from 'lucide-react';
+import Gallery from './screens/Gallery';
+import Editor from './screens/Editor';
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
-
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <BrowserRouter>
+      {/* Весь интерфейс с темным фоном */}
+      <div className="min-h-screen bg-slate-950 text-white">
+        
+        {/* Шапка сайта (видна на всех страницах) */}
+        <nav className="border-b border-slate-800 p-4">
+          <div className="container mx-auto flex items-center justify-between">
+            {/* Логотип и ссылка на галерею */}
+            <Link to="/" className="flex items-center gap-2 text-xl font-bold hover:text-blue-400 transition">
+              <Home size={24} />
+              VectorEngine
+            </Link>
+            
+            {/* Кнопка создания нового проекта */}
+            <Link to="/editor/new" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition">
+              <PlusSquare size={20} />
+              Создать проект
+            </Link>
+          </div>
+        </nav>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+        {/* Анимация перехода между страницами */}
+        <AnimatePresence mode="wait">
+          <Routes>
+            {/* Главная страница - Галерея */}
+            <Route path="/" element={<Gallery />} />
+            
+            {/* Страница редактора с параметром id */}
+            <Route path="/editor/:id" element={<Editor />} />
+          </Routes>
+        </AnimatePresence>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+    </BrowserRouter>
   );
 }
 
