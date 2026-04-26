@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import '../style.css';
+import CanvasScene from '../components/CanvasScene';
+import { type LineAlg } from '../lib/raster/RasterRenderer'; 
 
 const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  const [lineAlg, setLineAlg] = useState<LineAlg>('bresenham');
 
   return (
     <div className="editor-container">
@@ -39,14 +43,49 @@ const Editor: React.FC = () => {
           </div>
         </aside>
 
-        <main className="canvas-area">
-          <div className="canvas">
-            <div className="canvas-placeholder">
-              <p>Ваш холст</p>
-              <p className="canvas-hint">Кликните, чтобы начать рисование</p>
-            </div>
-          </div>
-        </main>
+        <main className="canvas-area" style={{ position: 'relative' }}>
+                    {/* Кнопки поверх canvas */}
+                    <div style={{
+                        position: 'absolute',
+                        top: '20px',
+                        right: '20px',
+                        zIndex: 10,
+                        display: 'flex',
+                        gap: '8px'
+                    }}>
+                        <button 
+                            onClick={() => setLineAlg('bresenham')}
+                            style={{
+                                padding: '4px 8px',
+                                fontSize: '12px',
+                                background: lineAlg === 'bresenham' ? '#6366f1' : '#2a2a3a',
+                                border: 'none',
+                                borderRadius: '4px',
+                                color: 'white',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Брезенхем
+                        </button>
+                        <button 
+                            onClick={() => setLineAlg('wu')}
+                            style={{
+                                padding: '4px 8px',
+                                fontSize: '12px',
+                                background: lineAlg === 'wu' ? '#6366f1' : '#2a2a3a',
+                                border: 'none',
+                                borderRadius: '4px',
+                                color: 'white',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Ву (сглаж.)
+                        </button>
+                    </div>
+                    
+                    {/* ВМЕСТО ЗАГЛУШКИ — НАСТОЯЩИЙ CANVAS */}
+                    <CanvasScene lineAlg={lineAlg} />
+                </main>
 
         <aside className="properties-panel">
           <h3>Свойства</h3>
