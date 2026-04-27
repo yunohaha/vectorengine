@@ -84,53 +84,35 @@ export class RasterRenderer {
 
     }
 
-    private blendPixel(x: number, y: number, color: RGBA, alphaFactor = 1) {
-
-        if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
+    private blendPixel(x: number, y: number, color: RGBA, alphaFactor = 1)
+    {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
 
         const i = this.idx(x, y);
 
-
-        let srcA  = (color.a / 255) * alphaFactor;
-        srcA = Math.min(1, Math.max(0, srcA));
-
-        if (srcA <= 0) return;
-
-        const dstR = this.buf[i] / 255;
-        const dstG = this.buf[i + 1] / 255;
-        const dstB = this.buf[i + 2] / 255;
+        const srcA = (color.a * alphaFactor) / 255;
         const dstA = this.buf[i + 3] / 255;
+
+        const outA = srcA + dstA * (1 - srcA);
+
+        if (outA === 0) return;
 
         const srcR = color.r / 255;
         const srcG = color.g / 255;
         const srcB = color.b / 255;
 
-        if (srcA >=1){
-            this.buf[i] = clampByte(color.r);
-            this.buf[i+1] = clampByte(color.g);
-            this.buf[i+2] = clampByte(color.b);
-            this.buf[i+3] = 255;
-            return;
-        }
+        const dstR = this.buf[i] / 255;
+        const dstG = this.buf[i + 1] / 255;
+        const dstB = this.buf[i + 2] / 255;
 
-        const outR = srcR * srcA + dstR * dstA * (1 - srcA);
-        const outG = srcG * srcA + dstG * dstA * (1 - srcA);
-        const outB = srcB * srcA + dstB * dstA * (1 - srcA);
-        const outA = srcA + dstA * (1 - srcA);
+        const outR = (srcR * srcA + dstR * dstA * (1 - srcA)) / outA;
+        const outG = (srcG * srcA + dstG * dstA * (1 - srcA)) / outA;
+        const outB = (srcB * srcA + dstB * dstA * (1 - srcA)) / outA;
 
-        if (outA > 0) {
-            this.buf[i] = clampByte(outR* 255);
-            this.buf[i + 1] = clampByte(outG* 255);
-            this.buf[i + 2] = clampByte(outB * 255);
-            this.buf[i + 3] = clampByte(outA * 255);
-
-        }else {
-            this.buf[i] = 0;
-            this.buf[i + 1] = 0;
-            this.buf[i + 2] = 0;
-            this.buf[i + 3] = 0;
-        }
-
+        this.buf[i] = clampByte(outR * 255);
+        this.buf[i + 1] = clampByte(outG * 255);
+        this.buf[i + 2] = clampByte(outB * 255);
+        this.buf[i + 3] = clampByte(outA * 255);
     }
 
 
@@ -403,6 +385,11 @@ export class RasterRenderer {
             const p1 = points[i];
             const p2 = points[(i + 1) % points.length];
             this.strokeLine(p1.x, p1.y, p2.x, p2.y, color, width);
+        }
+
+        const half = width / 2;
+        for (let i = 0; i < points.length; i++) {
+            this.fillCircle(points[i].x, points[i].y, half, color);
         }
     }
 }
