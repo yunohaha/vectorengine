@@ -180,7 +180,7 @@ private blendPixel(x: number, y: number, color: RGBA, alphaFactor = 1) {
 
         if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
 
-        const i = this.idx(x, y,);
+        const i = this.idx(x, y);
 
 
         let srcA  = (color.a / 255) * alphaFactor;
@@ -188,10 +188,14 @@ private blendPixel(x: number, y: number, color: RGBA, alphaFactor = 1) {
 
         if (srcA <= 0) return;
 
-        const dstR = this.buf[i];
-        const dstG = this.buf[i+1];    
-        const dstB = this.buf[i+2];
-        const dstA = this.buf[i+3] / 255;
+        const dstR = this.buf[i] / 255;
+        const dstG = this.buf[i + 1] / 255;
+        const dstB = this.buf[i + 2] / 255;
+        const dstA = this.buf[i + 3] / 255;
+
+        const srcR = color.r / 255;
+        const srcG = color.g / 255;
+        const srcB = color.b / 255;
 
         if (srcA >=1){
             this.buf[i] = clampByte(color.r);
@@ -201,27 +205,41 @@ private blendPixel(x: number, y: number, color: RGBA, alphaFactor = 1) {
             return;
         }
 
+        const outR = srcR * srcA + dstR * dstA * (1 - srcA);
+        const outG = srcG * srcA + dstG * dstA * (1 - srcA);
+        const outB = srcB * srcA + dstB * dstA * (1 - srcA);
         const outA = srcA + dstA * (1 - srcA);
-        if (outA > 0) {
-            const outR = (color.r * srcA + dstR * dstA * (1 - srcA)) / outA;
-            const outG = (color.g * srcA + dstG * dstA * (1 - srcA)) / outA;
-            const outB = (color.b * srcA + dstB * dstA * (1 - srcA)) / outA;
 
-            this.buf[i] = clampByte(outR);
-            this.buf[i + 1] = clampByte(outG);
-            this.buf[i + 2] = clampByte(outB);
+        if (outA > 0) {
+            this.buf[i] = clampByte(outR* 255);
+            this.buf[i + 1] = clampByte(outG* 255);
+            this.buf[i + 2] = clampByte(outB * 255);
             this.buf[i + 3] = clampByte(outA * 255);
+
+        }else {
+            this.buf[i] = 0;
+            this.buf[i + 1] = 0;
+            this.buf[i + 2] = 0;
+            this.buf[i + 3] = 0;
         }
 
     }
 ```
-1. Проверяем, что координаты внутри canvas
-2. Находим индекс пикселя
-3. Нормализуем альфу нового цвета: делим на 255, чтобы получить значение от 0 до 1
-4. Если альфа = 0 (полностью прозрачный), ничего не делаем
-5. Если альфа = 1 (полностью непрозрачный), просто заменяем пиксель
-6. Иначе вычисляем новый цвет по формуле Source Over
-7. Записываем результат обратно в буфер
+**Особенности реализации:**
+- Все значения нормализуются к диапазону [0, 1] для вычислений
+- Если пиксель полностью прозрачный (`α_src = 0`) — ничего не меняется
+- Если пиксель полностью непрозрачный (`α_src = 1`) — просто заменяет старый цвет
+- Результат переводится обратно в диапазон [0, 255] и записывается в буфер
+
+**Алгоритм:**
+1. Проверка границ canvas
+2. Вычисление индекса пикселя в буфере
+3. Нормализация альфы нового цвета (деление на 255)
+4. Нормализация текущих значений из буфера
+5. Если альфа = 0 → выход
+6. Если альфа = 1 → замена пикселя
+7. Иначе — вычисление нового цвета по формуле Source Over
+8. Запись результата в буфер с обратным переводом в диапазон 0-255
 
 
 ### 5. Метод resize() — настройка размера canvas
@@ -288,13 +306,19 @@ beginFrame(clear = true) {
         let endX = Math.max(x0, x1);    
         
         for (let x = startX; x <= endX; x++) {
+        if (color.a < 255) {
+            this.blendPixel(x, y, color);
+        } else {
             this.setPixel(x, y, color);
         }
+    }
     }
 ```
 1. Упорядочиваем x0 и x1, чтобы startX был меньше `endX`
 2. В цикле от `startX` до `endX` рисуем пиксели
-3. Используем `setPixel` для установки каждого пикселя
+3. для поддержки прозрачности при заливке фигур метод `drawHSpan` был модифицирован: 
+- Если цвет полностью непрозрачный (`a = 255`), используется `setPixel` (прямая запись)
+- Если цвет имеет прозрачность (`a < 255`), используется `blendPixel` (смешивание)
 
 Все заливки (круги, треугольники) в конечном итоге сводятся к рисованию горизонтальных линий. Это проще и быстрее, чем рисовать каждый пиксель по отдельности.
 
@@ -637,28 +661,29 @@ fillPolygon(points: { x: number; y: number }[], color: RGBA) {
 
  ### 11. Метод fillCircle() — заливка круга\
 
- Закрашивает круг с центром (cx, cy) и заданным радиусом.
-Круг описывается уравнением (x - cx)² + (y - cy)² = R². Для каждой строки y можно вычислить, какие X принадлежат кругу: dx = √(R² - dy²).
+Закрашивает круг на растре. Она использует алгоритм растеризации окружности через горизонтальные линии (scanline). Вместо того чтобы вычислять каждый пиксель по отдельности, функция определяет для каждой строки экрана "сечение" круга и закрашивает горизонтальный отрезок.
 
 ```ts
 fillCircle(cx: number, cy: number, radius: number, color: RGBA) {
-        for (let y = cy - radius; y <= cy + radius; y++) {
-            const dy = y - cy; 
-            
-            const dx = Math.sqrt(radius * radius - dy * dy);
-            
-            const x1 = cx - dx;  
-            const x2 = cx + dx; 
-            
-            this.drawHSpan(y, x1, x2, color);
-        }
+    const r = Math.round(radius);
+    const centerX = Math.round(cx);
+    const centerY = Math.round(cy);
+    
+    for (let y = -r; y <= r; y++) {
+        const dy = y;
+        const dx = Math.sqrt(Math.max(0, r * r - dy * dy));
+        const x1 = Math.round(centerX - dx);
+        const x2 = Math.round(centerX + dx);
+        
+        this.blendPixel(centerY + y, x1, x2, color);
     }
+}
 ```
-1. `y` меняется от `cy - radius` до `cy + radius` (все строки, где может быть круг)
-2. `dy = y - cy` — расстояние от центра до текущей строки
-3. `dx = √(R² - dy²)` — по теореме Пифагора находим горизонтальное расстояние
-4. `x1 = cx - dx`, `x2 = cx + dx` — левая и правая границы круга на этой строке
-5. Рисуем горизонтальную линию от `x1` до `x2`
+1. `y` меняется от `cy - radius` до `cy + radius` — перебираются все строки, которые могут содержать пиксели круга
+2. `dy = y - cy`— вычисляется расстояние от текущей строки до центра круга по вертикали
+3. `dx = √(R² - dy²)` — по теореме Пифагора находится горизонтальное расстояние от центра до границы круга на текущей строке
+4. `x1 = cx - dx`, `x2 = cx + dx` — определяются левая и правая границы круга
+5. `drawHSpan(y, x1, x2, color)` — закрашивается горизонтальная линия от x1 до x2 на строке y
 
 ### 12. Метод strokeLine() — толстая линия
 

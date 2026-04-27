@@ -289,7 +289,6 @@ body {
 .tool-item.active {
   background-color: #3a2a36;
   color: #f163b1;
-  border-left: 3px solid #18041d;
 }
 
 .canvas-area {

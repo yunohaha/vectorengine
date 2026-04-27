@@ -25,65 +25,27 @@ const Editor: React.FC = () => {
 
       <div className="editor-main">
         <aside className="tools-panel">
-          <div className="tool-item active">
-            <span>🖱️</span>
-            <span>Выбор</span>
+          <div className={`tool-item ${lineAlg === 'bresenham' ? 'active' : ''}`}
+          onClick={() => setLineAlg('bresenham')}
+          >
+            <span>✎</span>
+            <span>Брезенхем</span>
           </div>
-          <div className="tool-item">
-            <span>⬛</span>
-            <span>Квадрат</span>
+          
+          <div className={`tool-item ${lineAlg === 'wu' ? 'active' : ''}`}
+          onClick={() => setLineAlg('wu')}
+          >
+            <span>📏</span>
+            <span>By</span>
           </div>
+          
           <div className="tool-item">
             <span>⚪</span>
             <span>Круг</span>
           </div>
-          <div className="tool-item">
-            <span>📏</span>
-            <span>Линия</span>
-          </div>
         </aside>
 
         <main className="canvas-area" style={{ position: 'relative' }}>
-                    {/* Кнопки поверх canvas */}
-                    <div style={{
-                        position: 'absolute',
-                        top: '20px',
-                        right: '20px',
-                        zIndex: 10,
-                        display: 'flex',
-                        gap: '8px'
-                    }}>
-                        <button 
-                            onClick={() => setLineAlg('bresenham')}
-                            style={{
-                                padding: '4px 8px',
-                                fontSize: '12px',
-                                background: lineAlg === 'bresenham' ? '#6366f1' : '#2a2a3a',
-                                border: 'none',
-                                borderRadius: '4px',
-                                color: 'white',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            Брезенхем
-                        </button>
-                        <button 
-                            onClick={() => setLineAlg('wu')}
-                            style={{
-                                padding: '4px 8px',
-                                fontSize: '12px',
-                                background: lineAlg === 'wu' ? '#6366f1' : '#2a2a3a',
-                                border: 'none',
-                                borderRadius: '4px',
-                                color: 'white',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            Ву (сглаж.)
-                        </button>
-                    </div>
-                    
-                    {/* ВМЕСТО ЗАГЛУШКИ — НАСТОЯЩИЙ CANVAS */}
                     <CanvasScene lineAlg={lineAlg} />
                 </main>
 

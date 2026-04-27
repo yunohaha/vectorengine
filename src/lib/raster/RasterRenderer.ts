@@ -96,10 +96,14 @@ export class RasterRenderer {
 
         if (srcA <= 0) return;
 
-        const dstR = this.buf[i];
-        const dstG = this.buf[i+1];    
-        const dstB = this.buf[i+2];
-        const dstA = this.buf[i+3] / 255;
+        const dstR = this.buf[i] / 255;
+        const dstG = this.buf[i + 1] / 255;
+        const dstB = this.buf[i + 2] / 255;
+        const dstA = this.buf[i + 3] / 255;
+
+        const srcR = color.r / 255;
+        const srcG = color.g / 255;
+        const srcB = color.b / 255;
 
         if (srcA >=1){
             this.buf[i] = clampByte(color.r);
@@ -109,16 +113,22 @@ export class RasterRenderer {
             return;
         }
 
+        const outR = srcR * srcA + dstR * dstA * (1 - srcA);
+        const outG = srcG * srcA + dstG * dstA * (1 - srcA);
+        const outB = srcB * srcA + dstB * dstA * (1 - srcA);
         const outA = srcA + dstA * (1 - srcA);
-        if (outA > 0) {
-            const outR = (color.r * srcA + dstR * dstA * (1 - srcA)) / outA;
-            const outG = (color.g * srcA + dstG * dstA * (1 - srcA)) / outA;
-            const outB = (color.b * srcA + dstB * dstA * (1 - srcA)) / outA;
 
-            this.buf[i] = clampByte(outR);
-            this.buf[i + 1] = clampByte(outG);
-            this.buf[i + 2] = clampByte(outB);
+        if (outA > 0) {
+            this.buf[i] = clampByte(outR* 255);
+            this.buf[i + 1] = clampByte(outG* 255);
+            this.buf[i + 2] = clampByte(outB * 255);
             this.buf[i + 3] = clampByte(outA * 255);
+
+        }else {
+            this.buf[i] = 0;
+            this.buf[i + 1] = 0;
+            this.buf[i + 2] = 0;
+            this.buf[i + 3] = 0;
         }
 
     }
@@ -281,7 +291,11 @@ export class RasterRenderer {
         let endX = Math.max(x0, x1);    
         
         for (let x = startX; x <= endX; x++) {
-            this.setPixel(x, y, color);
+            if (color.a < 255) {
+                this.blendPixel(x, y, color);
+            } else {
+                this.setPixel(x, y, color);
+            }
         }
     }
 
@@ -334,17 +348,19 @@ export class RasterRenderer {
 
 
     fillCircle(cx: number, cy: number, radius: number, color: RGBA) {
-        for (let y = cy - radius; y <= cy + radius; y++) {
-            const dy = y - cy; 
-            
-            const dx = Math.sqrt(radius * radius - dy * dy);
-            
-            const x1 = cx - dx;  
-            const x2 = cx + dx; 
-            
-            this.drawHSpan(y, x1, x2, color);
-        }
+    const r = Math.round(radius);
+    const centerX = Math.round(cx);
+    const centerY = Math.round(cy);
+    
+    for (let y = -r; y <= r; y++) {
+        const dy = y;
+        const dx = Math.sqrt(Math.max(0, r * r - dy * dy));
+        const x1 = Math.round(centerX - dx);
+        const x2 = Math.round(centerX + dx);
+        
+        this.drawHSpan(centerY + y, x1, x2, color);
     }
+}
 
     
 

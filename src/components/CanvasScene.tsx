@@ -45,24 +45,44 @@ const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
         const frame = () => {
         const r = rendererRef.current;
         if (r) {
-            r.beginFrame(true); 
-            // Нарисовать фигуры (Пока фигур нет, этот код закомментирован)
-            // for (const shape of shapes) {
-            // shape.drawRaster(r);
-            // }
-            // Попробуйте нарисвать красный полигон с черной обводкой или что-нибудь ещё
-            const pts = [
+            r.beginFrame(true);
+
+            // ===== 1. ЗАКРАШЕННЫЙ МНОГОУГОЛЬНИК (треугольник) =====
+            const triangle = [
                 { x: 200, y: 100 },
                 { x: 600, y: 100 },
-                { x: 400, y: 500 },
+                { x: 400, y: 450 },
             ];
             const red = { r: 255, g: 0, b: 0, a: 255 };
             const black = { r: 0, g: 0, b: 0, a: 255 };
-            r.fillPolygon(pts, red);
-            r.strokePolygon(pts, black, 0.5);
             
+            r.fillPolygon(triangle, red);           // заливка
+            r.strokePolygon(triangle, black, 3);    // обводка толщиной 3
             
-            r.commit(); 
+            // ===== 2. ОКРУЖНОСТЬ (полупрозрачная) =====
+            const blue = { r: 0, g: 0, b: 255, a: 185 };  // полупрозрачный синий
+            r.fillCircle(520, 280, 70, blue);
+            
+            // ===== 3. ТОЛСТАЯ ЛОМАНАЯ ЛИНИЯ =====
+            const polyline = [
+                { x: 50, y: 500 },
+                { x: 200, y: 440 },
+                { x: 400, y: 520 },
+                { x: 600, y: 460 },
+                { x: 750, y: 530 },
+            ];
+            const white = { r: 25, g: 25, b: 255, a: 255 };
+            
+            // Рисуем ломаную (каждый отрезок отдельно, чтобы избежать проблем с нормалью)
+            for (let i = 0; i < polyline.length - 1; i++) {
+                r.strokeLine(polyline[i].x, polyline[i].y, polyline[i + 1].x, polyline[i + 1].y, white, 8);
+            }
+            
+            // ===== 4. ЛИНИЯ ДЛЯ ПРОВЕРКИ АЛГОРИТМОВ =====
+            const green = { r: 0, g: 255, b: 0, a: 255 };
+            r.drawLine(50, 50, 750, 550, green);   // диагональ через весь холст
+            
+            r.commit();
         }
         raf = requestAnimationFrame(frame);
     };
