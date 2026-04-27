@@ -68,7 +68,7 @@ const Gallery: React.FC = () => {
           {projects.map(project => (
             <Link to={`/editor/${project.id}`} key={project.id} className="project-card-link">
               <div className="project-card">
-                <div className="project-card-icon">📐</div>
+                <div className="project-card-icon">иконка</div>
                 <h3 className="project-card-title">{project.name}</h3>
                 <p className="project-card-date">
                   {new Date(project.date).toLocaleDateString('ru-RU')}

@@ -96,7 +96,7 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #41083c 0%, #661325 100%);
+  background:  #41083c;
   color: rgb(243, 209, 209);
   border: none;
   padding: 0.75rem 1.5rem;
@@ -313,10 +313,6 @@ body {
   justify-content: center;
 }
 
-.canvas-placeholder {
-  text-align: center;
-  color: #666;
-}
 
 .properties-panel {
   width: 260px;

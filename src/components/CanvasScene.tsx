@@ -46,6 +46,7 @@ const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
         const r = rendererRef.current;
         if (r) {
             r.beginFrame(true);
+
             const triangle = [
                 { x: 200, y: 100 },
                 { x: 600, y: 100 },
