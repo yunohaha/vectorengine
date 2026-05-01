@@ -1,0 +1,110 @@
+import { mat3, type Mat3, type Point2D } from '../math/mat3';
+import type { RasterRenderer } from '../raster/RasterRenderer';
+
+export interface ShapeStyle {
+    
+    fillStyle: string;
+    fillOpacity: number;
+    strokeStyle: string;
+    strokeWidth: number;
+    strokeOpacity: number;
+}
+
+export interface Transform {
+    x: number;
+    y: number;
+    rotation: number;
+    scaleX: number;
+    scaleY: number;
+}
+
+export interface Bounds {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number
+}
+
+export abstract class Shape {
+    id: string;
+    transform: Transform;
+    style:ShapeStyle;
+
+    constructor(transform?: Partial<Transform>, style?: Partial<ShapeStyle>) {
+        this.id = crypto.randomUUID();
+        this.transform = {
+            x: transform?.x ?? 0,
+            y: transform?.y ?? 0,
+            rotation: transform?.rotation ?? 0,
+            scaleX: transform?.scaleX ?? 1,
+            scaleY: transform?.scaleY ?? 1,
+        };
+        this.style = {
+            fillStyle: style?.fillStyle ?? '#000000',
+            fillOpacity: style?.fillOpacity ?? 1,
+            strokeStyle: style?.strokeStyle ?? '#000000',
+            strokeWidth: style?.strokeWidth ?? 1,
+            strokeOpacity: style?.strokeOpacity ?? 1,
+        };
+    }
+
+    getLocalToDeviceMatrix(): Mat3 {
+        const {x, y, rotation, scaleX, scaleY } = this.transform;
+        return mat3.fromTransform(x, y, rotation, scaleX, scaleY);
+    }
+
+    getDeviceToLocalMatrix(): Mat3 | null {
+        return mat3.invert(this.getLocalToDeviceMatrix());
+    }
+
+    
+    transformPointToDevice(px: number, py: number): Point2D {
+        return mat3.transformPoint(this.getLocalToDeviceMatrix(), px, py);
+    }
+    
+    transformPointToLocal(px: number, py: number): Point2D | null {
+        const inv = this.getDeviceToLocalMatrix();
+        if (!inv) return null;
+        return mat3.transformPoint(inv, px, py);
+    }
+
+    getCenter(): Point2D {
+         const bounds = this.getBounds();
+            return {
+                x: (bounds.minX + bounds.maxX) / 2,
+                y: (bounds.minY + bounds.maxY) / 2,
+            };
+    }
+
+    resizeFromDeviceAABB(minX: number, minY: number, maxX: number, maxY: number): void {
+        const center = this.getCenter();
+        const newCenter = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+        
+        this.transform.x += newCenter.x - center.x;
+        
+        const oldBounds = this.getBounds();
+        const oldWidth = oldBounds.maxX - oldBounds.minX;
+        const oldHeight = oldBounds.maxY - oldBounds.minY;
+        const newWidth = maxX - minX;
+        const newHeight = maxY - minY;
+        
+        if (oldWidth > 0) this.transform.scaleX *= newWidth / oldWidth;
+        if (oldHeight > 0) this.transform.scaleY *= newHeight / oldHeight;
+    }
+
+    setBounds(minX: number, minY: number, maxX: number, maxY: number): void {
+        this.resizeFromDeviceAABB(minX, minY, maxX, maxY);
+    }
+
+    abstract clone(): Shape;
+
+    abstract drawRaster(r: RasterRenderer): void;
+
+    abstract hitTest(px: number, py: number): boolean;
+
+    abstract getBounds(): Bounds;
+
+    abstract getLocalBounds(): Bounds;
+
+    abstract toJSON(): object;
+}
