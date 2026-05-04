@@ -293,11 +293,13 @@ body {
 
 .canvas-area {
   flex: 1;
-  display: flex;
+  position: relative;
   justify-content: center;
   align-items: center;
   background-color: #644259;
   padding: 2rem;
+  overflow: auto;
+  
 }
 
 .canvas {
@@ -308,7 +310,7 @@ body {
   background-color: white;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  display: flex;
+  display: block;
   align-items: center;
   justify-content: center;
 }

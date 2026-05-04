@@ -13,7 +13,6 @@ const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<RasterRenderer>(null);
     const [shapes] = useState<Shape[]>([
-        // Прямоугольник
         new Rect(150, 100, { x: 300, y: 200, rotation: 0.3, scaleX: 1, scaleY: 1 }, {
             fillStyle: '#FF6B6B',
             fillOpacity: 0.8,
@@ -21,7 +20,6 @@ const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
             strokeWidth: 3,
             strokeOpacity: 1,
         }),
-        // Линия
         new Line(-50, -50, 50, 50, { x: 500, y: 150, rotation: 0, scaleX: 1, scaleY: 1 }, {
             fillStyle: '#000000',
             fillOpacity: 0,
@@ -29,7 +27,6 @@ const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
             strokeWidth: 4,
             strokeOpacity: 1,
         }),
-        // Овал
         new Oval(80, 50, { x: 500, y: 350, rotation: 0.5, scaleX: 1, scaleY: 1 }, {
             fillStyle: '#45B7D1',
             fillOpacity: 0.7,
@@ -84,16 +81,17 @@ const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
         };
     }, []);
 
+    const CANVAS_WIDTH = 1500;
+    const CANVAS_HEIGHT = 800;
     return (
         <canvas 
             ref={canvasRef} 
             style={{ 
-                width: '100%', 
-                height: '100%', 
+                width: `${CANVAS_WIDTH}px`, 
+                height: `${CANVAS_HEIGHT}px`, 
                 display: 'block',
                 backgroundColor: 'white',
-                borderRadius: '12px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
+                borderRadius: '12px'
             }} 
         />
     );
