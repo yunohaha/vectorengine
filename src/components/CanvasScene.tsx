@@ -1,74 +1,57 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { RasterRenderer, type LineAlg } from '../lib/raster/RasterRenderer';
-import { Rect } from '../lib/shapes/Rect';
-import { Line } from '../lib/shapes/Line';
-import { Oval } from '../lib/shapes/Oval';
 import type { Shape } from '../lib/shapes/Shape';
-import { Triangle } from '../lib/shapes/Triangle';
-import { QuadraticBezier } from '../lib/shapes/QuadraticBezier';
-import { CubicBezier } from '../lib/shapes/CubicBezier';
-import { PathBezier } from '../lib/shapes/PathBezier';
 
 interface CanvasSceneProps {
     lineAlg: LineAlg;
+    shapes: Shape[];
+    selectedId?: string | null;
+    onSelect?: (id: string | null) => void;
 }
 
-const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
+const CANVAS_WIDTH = 1535;
+const CANVAS_HEIGHT = 840;
 
+const CanvasScene = ({ lineAlg, shapes, selectedId, onSelect }: CanvasSceneProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<RasterRenderer>(null);
-    const [shapes] = useState<Shape[]>([
-        new Triangle(0, -50, -43, 25, 43, 25,
-            { x: 150, y: 150, rotation: 0.3 },
-            { fillStyle: '#FF6B6B', fillOpacity: 0.8, strokeStyle: '#333', strokeWidth: 2 }
-        ),
-
-        new QuadraticBezier(
-            { x: 0, y: 0 }, { x: 50, y: 100 }, { x: 100, y: 0 },
-            { x: 400, y: 150, rotation: 0 },
-            { strokeStyle: '#4ECDC4', strokeWidth: 3, strokeOpacity: 1 }
-        ),
-
-        new CubicBezier(
-            { x: 0, y: 0 }, { x: 30, y: 100 }, { x: 70, y: -100 }, { x: 100, y: 0 },
-            { x: 600, y: 350, rotation: 0 },
-            { strokeStyle: '#45B7D1', strokeWidth: 3, strokeOpacity: 1 }
-        ),
-
-        new PathBezier(
-            [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
-            'polyline', true,
-            { x: 300, y: 350 },
-            { fillStyle: '#96CEB4', fillOpacity: 0.6, strokeStyle: '#333', strokeWidth: 2 }
-        ),
-        new Rect(150, 100, { x: 300, y: 200, rotation: 0.3, scaleX: 1, scaleY: 1 }, {
-            fillStyle: '#FF6B6B',
-            fillOpacity: 0.8,
-            strokeStyle: '#333333',
-            strokeWidth: 3,
-            strokeOpacity: 1,
-        }),
-        new Line(-50, -50, 50, 50, { x: 500, y: 150, rotation: 0, scaleX: 1, scaleY: 1 }, {
-            fillStyle: '#000000',
-            fillOpacity: 0,
-            strokeStyle: '#4ECDC4',
-            strokeWidth: 4,
-            strokeOpacity: 1,
-        }),
-        new Oval(80, 50, { x: 500, y: 350, rotation: 0.5, scaleX: 1, scaleY: 1 }, {
-            fillStyle: '#45B7D1',
-            fillOpacity: 0.7,
-            strokeStyle: '#2C3E50',
-            strokeWidth: 2,
-            strokeOpacity: 1,
-        }),
-    ]);
+    const animationRef = useRef<number>(0);
+    
+    const shapesRef = useRef(shapes);
+    const selectedIdRef = useRef(selectedId);
+    
+    useEffect(() => {
+        shapesRef.current = shapes;
+    }, [shapes]);
+    
+    useEffect(() => {
+        selectedIdRef.current = selectedId;
+    }, [selectedId]);
 
     useEffect(() => {
         if (rendererRef.current) {
             rendererRef.current.setLineAlgorithm(lineAlg);
         }
     }, [lineAlg]);
+
+    const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (!canvasRef.current || !onSelect) return;
+        
+        const rect = canvasRef.current.getBoundingClientRect();
+        const scaleX = canvasRef.current.width / rect.width;
+        const scaleY = canvasRef.current.height / rect.height;
+        
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        const mouseY = (e.clientY - rect.top) * scaleY;
+      
+        for (let i = shapesRef.current.length - 1; i >= 0; i--) {
+            if (shapesRef.current[i].hitTest(mouseX, mouseY)) {
+                onSelect(shapesRef.current[i].id);
+                return;
+            }
+        }
+        onSelect(null);
+    }, [onSelect]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -78,48 +61,60 @@ const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
         renderer.setLineAlgorithm(lineAlg);
         rendererRef.current = renderer;
 
-        const ro = new ResizeObserver(() => {
+        const resizeObserver = new ResizeObserver(() => {
             renderer.resize();
         });
-        ro.observe(canvas);
-
-        let raf = 0;
+        resizeObserver.observe(canvas);
 
         const frame = () => {
             const r = rendererRef.current;
             if (r) {
                 r.beginFrame(true);
-
-                // Отрисовка всех фигур
-                for (const shape of shapes) {
+                
+                for (const shape of shapesRef.current) {
                     shape.drawRaster(r);
                 }
-
+                
+                const currentSelectedId = selectedIdRef.current;
+                if (currentSelectedId) {
+                    const selectedShape = shapesRef.current.find(s => s.id === currentSelectedId);
+                    if (selectedShape) {
+                        const bounds = selectedShape.getBounds();
+                        const obvo = { r: 205, g: 25, b: 150, a: 205 };
+                        r.strokeLine(bounds.minX, bounds.minY, bounds.maxX, bounds.minY, obvo, 2);
+                        r.strokeLine(bounds.maxX, bounds.minY, bounds.maxX, bounds.maxY, obvo, 2);
+                        r.strokeLine(bounds.maxX, bounds.maxY, bounds.minX, bounds.maxY, obvo, 2);
+                        r.strokeLine(bounds.minX, bounds.maxY, bounds.minX, bounds.minY, obvo, 2);
+                    }
+                }
+                
                 r.commit();
             }
-            raf = requestAnimationFrame(frame);
+            animationRef.current = requestAnimationFrame(frame);
         };
 
-        raf = requestAnimationFrame(frame);
+        frame();
 
         return () => {
-            cancelAnimationFrame(raf);
-            ro.disconnect();
+            cancelAnimationFrame(animationRef.current);
+            resizeObserver.disconnect();
             renderer.dispose();
         };
-    }, []);
+    }, []); 
 
-    const CANVAS_WIDTH = 1500;
-    const CANVAS_HEIGHT = 800;
     return (
         <canvas
             ref={canvasRef}
+            onClick={handleCanvasClick}
             style={{
                 width: `${CANVAS_WIDTH}px`,
                 height: `${CANVAS_HEIGHT}px`,
                 display: 'block',
                 backgroundColor: 'white',
-                borderRadius: '12px'
+                borderRadius: '10px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+                flexShrink: 0,
+                cursor: 'pointer'
             }}
         />
     );

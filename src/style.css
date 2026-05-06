@@ -210,6 +210,20 @@ body {
 
 
 
+.tools-panel::-webkit-scrollbar {
+    width: 1px;
+    height: 1px;
+}
+
+.canvas-area::-webkit-scrollbar  {
+   width: 8px;
+   height: 8px;
+}
+.canvas-area::-webkit-scrollbar-thumb {
+    background: #4b3243; 
+    border-radius: 4px;
+}
+
 
 .editor-container {
   height: calc(100vh - 73px);
@@ -262,12 +276,13 @@ body {
 }
 
 .tools-panel {
-  width: 80px;
+  width: 90px;
   background-color: #1a0f19;
   border-right: 1px solid #2a2a3a;
   display: flex;
   flex-direction: column;
-  padding: 1rem 0;
+  overflow-y: auto;
+  flex-shrink: 0;  
 }
 
 .tool-item {
@@ -297,24 +312,10 @@ body {
   justify-content: center;
   align-items: center;
   background-color: #644259;
-  padding: 2rem;
+  padding: 1rem;
   overflow: auto;
   
 }
-
-.canvas {
-  width: 100%;
-  height: 100%;
-  max-width: 1000px;
-  max-height: 700px;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  display: block;
-  align-items: center;
-  justify-content: center;
-}
-
 
 .properties-panel {
   width: 260px;
@@ -354,3 +355,30 @@ body {
 }
 
 
+.tool-group-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #be73b6;
+    padding: 0.75rem 0.5rem 0.25rem;
+    border-top: 1px solid #3a2a3a;
+    margin-top: 0.5rem;
+}
+.tool-group-title-1 {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #be73b6;
+    padding: 0.75rem 0.5rem 0.25rem;
+    margin-top: 0.5rem;
+}
+
+
+
+.tool-icon {
+    width: 20px;
+    height: 20px;
+    display: block;
+    filter: brightness(0.7) sepia(1) hue-rotate(280deg) saturate(0.5);
+    transition: filter 0.2s ease;
+}

@@ -33,7 +33,7 @@ export class CubicBezier extends Shape {
         return { x, y };
     }
 
-    flattenLocal(segments: number = 48): Point2D[] {
+    flattenLocal(segments: number = 200): Point2D[] {
         const points: Point2D[] = [];
         for (let i = 0; i <= segments; i++) {
             const t = i / segments;
@@ -42,7 +42,7 @@ export class CubicBezier extends Shape {
         return points;
     }
 
-    getDevicePoints(segments: number = 48): Point2D[] {
+    getDevicePoints(segments: number = 200): Point2D[] {
         const matrix = this.getLocalToDeviceMatrix();
         return this.flattenLocal(segments).map(p => mat3.transformPoint(matrix, p.x, p.y));
     }

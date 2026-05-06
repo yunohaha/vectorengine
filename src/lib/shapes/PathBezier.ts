@@ -39,7 +39,7 @@ export class PathBezier extends Shape {
         ];
     }
 
-    flattenLocal(segmentsPerCurve: number = 20): Point2D[] {
+    flattenLocal(segmentsPerCurve: number = 100): Point2D[] {
         if (this.points.length < 2) return [];
         
         const result: Point2D[] = [];
@@ -73,7 +73,7 @@ export class PathBezier extends Shape {
                     bezierPoints[2], bezierPoints[3]
                 );
                 const pts = cubic.flattenLocal(segmentsPerCurve);
-                result.push(...pts.slice(0, -1));
+                result.push(...pts);
             }
             result.push({ ...this.points[this.points.length - 1] });
             if (this.closed && this.points.length > 2) {
@@ -84,7 +84,7 @@ export class PathBezier extends Shape {
         return result;
     }
 
-    getDevicePoints(segmentsPerCurve: number = 20): Point2D[] {
+    getDevicePoints(segmentsPerCurve: number = 100): Point2D[] {
         const matrix = this.getLocalToDeviceMatrix();
         return this.flattenLocal(segmentsPerCurve).map(p => mat3.transformPoint(matrix, p.x, p.y));
     }
@@ -111,7 +111,7 @@ export class PathBezier extends Shape {
     }
 
     hitTest(px: number, py: number): boolean {
-        const points = this.getDevicePoints(30);
+        const points = this.getDevicePoints(120);
         const threshold = Math.max(5, this.style.strokeWidth / 2);
         
         for (let i = 0; i < points.length - 1; i++) {
@@ -156,7 +156,7 @@ export class PathBezier extends Shape {
     }
 
     getBounds(): Bounds {
-        const points = this.getDevicePoints(30);
+        const points = this.getDevicePoints(120);
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const p of points) {
             minX = Math.min(minX, p.x);
@@ -168,7 +168,7 @@ export class PathBezier extends Shape {
     }
 
     getLocalBounds(): Bounds {
-        const points = this.flattenLocal(30);
+        const points = this.flattenLocal(120);
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const p of points) {
             minX = Math.min(minX, p.x);
@@ -181,6 +181,9 @@ export class PathBezier extends Shape {
 
     getControlPoints(): Point2D[] {
         return this.points.map(p => ({ ...p }));
+    }
+    getClosed(): boolean {
+        return this.closed;
     }
 
     setControlPoint(index: number, localPt: Point2D): void {
