@@ -30,11 +30,6 @@ export abstract class Shape {
     transform: Transform;
     style:ShapeStyle;
 
-    private cachedBounds: Bounds | null = null;
-    private cachedCenter: Point2D | null = null;
-    private transformVersion: number = 0;
-    private currentTransformVersion: number = 1;
-
     constructor(transform?: Partial<Transform>, style?: Partial<ShapeStyle>) {
         this.id = crypto.randomUUID();
         this.transform = {
@@ -53,15 +48,11 @@ export abstract class Shape {
         };
     }
 
-    protected invalidateCache(): void {
-        this.transformVersion++;
-        this.cachedBounds = null;
-        this.cachedCenter = null;
-    }
-
     setTransform(updates: Partial<Transform>): void {
-        Object.assign(this.transform, updates);
-        this.invalidateCache();
+        this.transform = {
+        ...this.transform,
+        ...updates,
+        };
     }
 
 
@@ -86,24 +77,23 @@ export abstract class Shape {
     }
 
     getCenter(): Point2D {
-        if (this.cachedCenter && this.transformVersion === this.currentTransformVersion) {
-            return this.cachedCenter;
-        }
 
         const bounds = this.getBounds();
-        this.cachedCenter = {
+
+        return {
             x: (bounds.minX + bounds.maxX) / 2,
             y: (bounds.minY + bounds.maxY) / 2,
         };
-        this.currentTransformVersion = this.transformVersion;
-        return this.cachedCenter;
     }
 
     resizeFromDeviceAABB(minX: number, minY: number, maxX: number, maxY: number): void {
         const center = this.getCenter();
         const newCenter = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
         
-        this.transform.x += newCenter.x - center.x;
+        this.setTransform({
+            x: this.transform.x + (newCenter.x - center.x),
+            y: this.transform.y + (newCenter.y - center.y),
+        });
         
         const oldBounds = this.getBounds();
         const oldWidth = oldBounds.maxX - oldBounds.minX;
@@ -111,10 +101,17 @@ export abstract class Shape {
         const newWidth = maxX - minX;
         const newHeight = maxY - minY;
         
-        if (oldWidth > 0) this.transform.scaleX *= newWidth / oldWidth;
-        if (oldHeight > 0) this.transform.scaleY *= newHeight / oldHeight;
+        this.setTransform({
+            scaleX:
+                oldWidth > 0
+                    ? this.transform.scaleX * (newWidth / oldWidth)
+                    : this.transform.scaleX,
 
-        this.invalidateCache();
+            scaleY:
+                oldHeight > 0
+                    ? this.transform.scaleY * (newHeight / oldHeight)
+                    : this.transform.scaleY,
+        });
     }
 
     setBounds(minX: number, minY: number, maxX: number, maxY: number): void {
@@ -127,9 +124,34 @@ export abstract class Shape {
 
     abstract hitTest(px: number, py: number): boolean;
 
-    abstract getBounds(): Bounds;
+    getBounds(): Bounds {
+
+        const pts = this.getLocalPoints().map(p =>
+            this.transformPointToDevice(p.x, p.y)
+        );
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        for (const p of pts) {
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+        }
+
+        return {
+            minX,
+            minY,
+            maxX,
+            maxY,
+        };
+    }
 
     abstract getLocalBounds(): Bounds;
 
     abstract toJSON(): object;
+    abstract getLocalPoints(): Point2D[];
 }

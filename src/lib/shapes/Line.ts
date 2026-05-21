@@ -15,6 +15,25 @@ export class Line extends Shape {
         this.y2 = y2;
     }
 
+    getControlPoints(): Point2D[] {
+        return [
+            { x: this.x1, y: this.y1 },
+            { x: this.x2, y: this.y2 }
+        ];
+    }
+
+    setControlPoint(index: number, point: Point2D): void {
+        if (index === 0) {
+            this.x1 = point.x;
+            this.y1 = point.y;
+        }
+
+        if (index === 1) {
+            this.x2 = point.x;
+            this.y2 = point.y;
+        }
+    }
+
     getLocalPoints(): Point2D[] {
         return[
             {x: this.x1, y: this.y1 },

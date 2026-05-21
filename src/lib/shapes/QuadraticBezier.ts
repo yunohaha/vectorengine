@@ -34,10 +34,13 @@ export class QuadraticBezier extends Shape {
         }
         return points;
     }
+    getLocalPoints(): Point2D[] {
+        return this.flattenLocal();
+    }
 
-    getDevicePoints(segments: number = 32): Point2D[] {
+    getDevicePoints(): Point2D[] {
         const matrix = this.getLocalToDeviceMatrix();
-        return this.flattenLocal(segments).map(p => mat3.transformPoint(matrix, p.x, p.y));
+        return this.flattenLocal().map(p => mat3.transformPoint(matrix, p.x, p.y));
     }
 
     drawRaster(r: RasterRenderer): void {
@@ -96,7 +99,7 @@ export class QuadraticBezier extends Shape {
     }
 
     getControlPoints(): Point2D[] {
-        return [{ ...this.p0 }, { ...this.p1 }, { ...this.p2 }];
+        return [this.p0, this.p1, this.p2];
     }
 
     setControlPoint(index: number, localPt: Point2D): void {
@@ -108,7 +111,7 @@ export class QuadraticBezier extends Shape {
     }
 
     getLocalBounds(): Bounds {
-        const points = this.flattenLocal(32);
+        const points = this.flattenLocal();
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const p of points) {
             minX = Math.min(minX, p.x);

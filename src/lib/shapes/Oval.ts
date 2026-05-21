@@ -13,6 +13,29 @@ export class Oval extends Shape {
         this.ry = Math.abs(ry);
     }
 
+    getControlPoints(): Point2D[] {
+        return [
+            { x: -this.rx, y: 0 },
+            { x: this.rx, y: 0 },
+            { x: 0, y: -this.ry },
+            { x: 0, y: this.ry }
+        ];
+    }
+
+    setControlPoint(index: number, point: Point2D): void {
+        switch (index) {
+            case 0:
+            case 1:
+                this.rx = Math.abs(point.x);
+                break;
+
+            case 2:
+            case 3:
+                this.ry = Math.abs(point.y);
+                break;
+        }
+    }
+
     getLocalPoints(segments: number = 32): Point2D[] {
         const points: Point2D[] = [];
         for (let i = 0; i <= segments; i++) {

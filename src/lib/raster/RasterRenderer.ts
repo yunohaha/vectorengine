@@ -393,17 +393,17 @@ export class RasterRenderer {
     }
     
     strokeCircle(cx: number, cy: number, radius: number, color: RGBA, width: number = 1): void {
-    const segments = Math.max(24, Math.floor(radius * 2));
-    const points: { x: number; y: number }[] = [];
-    for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        points.push({
-            x: cx + Math.cos(angle) * radius,
-            y: cy + Math.sin(angle) * radius
-        });
+        const segments = Math.max(24, Math.floor(radius * 2));
+        const points: { x: number; y: number }[] = [];
+        for (let i = 0; i <= segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            points.push({
+                x: cx + Math.cos(angle) * radius,
+                y: cy + Math.sin(angle) * radius
+            });
+        }
+        for (let i = 0; i < points.length - 1; i++) {
+            this.strokeLine(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y, color, width);
+        }
     }
-    for (let i = 0; i < points.length - 1; i++) {
-        this.strokeLine(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y, color, width);
-    }
-}
 }

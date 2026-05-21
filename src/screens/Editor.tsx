@@ -19,7 +19,6 @@ import ovalIcon from '../img/oval.svg';
 import triangleIcon from '../img/triangle.svg';
 import curvIcon from '../img/quadratic.svg';
 
-type ShapeUpdate = Partial<Shape['transform']> | { points?: Point2D[] };
 
 const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -40,26 +39,6 @@ const Editor: React.FC = () => {
       rotation: Math.random() * Math.PI * 2
     };
   };
-
-  const updateShapeTransform = useCallback((id: string, updates: ShapeUpdate) => {
-    setShapes(prev => prev.map(shape => {
-      if (shape.id !== id) return shape;
-      const newShape = shape.clone();
-      
-      if ('points' in updates && updates.points) {
-        if ((newShape as any).setControlPoint) {
-          for (let i = 0; i < updates.points.length; i++) {
-            (newShape as any).setControlPoint(i, updates.points[i]);
-          }
-        }
-      } 
-      else {
-        newShape.transform = { ...newShape.transform, ...updates };
-      }
-      
-      return newShape;
-    }));
-  }, []);
 
   const deleteShape = useCallback((id: string) => {
     setShapes(prev => prev.filter(shape => shape.id !== id));
@@ -168,6 +147,7 @@ const Editor: React.FC = () => {
       deleteShape(selectedId);
     }
   };
+  
 
   const selectedShape = shapes.find(s => s.id === selectedId);
   const isEditingMode = editingShapeId === selectedId;
@@ -228,7 +208,7 @@ const Editor: React.FC = () => {
             <span>Замкн.</span>
           </div>
 
-          <div className="tool-group-title">Редактирование</div>
+          <div className="tool-group-title">Ред.</div>
           <div
             className={`tool-item ${isEditingMode ? 'active' : ''}`}
             onClick={() => setEditingShapeId(isEditingMode ? null : selectedId)}
@@ -282,8 +262,7 @@ const Editor: React.FC = () => {
             selectedId={selectedId}
             editingShapeId={editingShapeId}
             onSelect={setSelectedId}
-            onUpdateShape={updateShapeTransform}
-            onDeleteShape={deleteShape}
+            onShapesChange={setShapes}
           />
         </main>
 

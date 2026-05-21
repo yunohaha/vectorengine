@@ -61,7 +61,6 @@ export class TransformHandles {
         if (!handleType || handleType === 'rotate') return null;
         
         const bounds = shape.getBounds();
-        const center = shape.getCenter();
         
         let dx = currentPoint.x - startPoint.x;
         let dy = currentPoint.y - startPoint.y;

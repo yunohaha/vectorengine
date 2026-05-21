@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { RasterRenderer, type LineAlg } from '../lib/raster/RasterRenderer';
 import type { Shape } from '../lib/shapes/Shape';
 import type { Point2D } from '../lib/math/mat3';
+import { ControlPointsEditor } from './ControlPointsEditor';
 
 interface CanvasSceneProps {
     lineAlg: LineAlg;
@@ -14,7 +15,7 @@ interface CanvasSceneProps {
 
 const CANVAS_WIDTH = 1535;
 const CANVAS_HEIGHT = 840;
-const HANDLE_SIZE = 8;
+const HANDLE_SIZE = 7;
 const ROTATE_HANDLE_DISTANCE = 30;
 
 const CanvasScene = ({ 
@@ -31,13 +32,15 @@ const CanvasScene = ({
  
     const shapesRef = useRef(shapes);
     const selectedIdRef = useRef(selectedId);
+    const editingShapeIdRef = useRef(editingShapeId);
 
     const isDragging = useRef(false);
     const dragStart = useRef({ x: 0, y: 0 });
     const dragShape = useRef<Shape | null>(null);
     const dragStartTransform = useRef<any>(null);
-    const dragType = useRef<'move' | 'resize' | 'rotate' | null>(null);
+    const dragType = useRef<'move' | 'resize' | 'rotate' | 'control-point' | null>(null);
     const dragHandle = useRef<string | null>(null);
+    const dragControlPointIndex = useRef<number | null>(null);
 
     useEffect(() => {
         shapesRef.current = shapes;
@@ -46,6 +49,10 @@ const CanvasScene = ({
     useEffect(() => {
         selectedIdRef.current = selectedId;
     }, [selectedId]);
+    
+    useEffect(() => {
+        editingShapeIdRef.current = editingShapeId;
+    }, [editingShapeId]);
 
     useEffect(() => {
         if (rendererRef.current) {
@@ -78,12 +85,13 @@ const CanvasScene = ({
 
     const hitTestHandle = useCallback((shape: Shape, point: Point2D): string | null => {
         const handles = getHandles(shape);
+        const hitZone = HANDLE_SIZE + 5;
         
-        if (Math.abs(point.x - handles.se.x) <= HANDLE_SIZE && Math.abs(point.y - handles.se.y) <= HANDLE_SIZE) return 'se';
-        if (Math.abs(point.x - handles.nw.x) <= HANDLE_SIZE && Math.abs(point.y - handles.nw.y) <= HANDLE_SIZE) return 'nw';
-        if (Math.abs(point.x - handles.ne.x) <= HANDLE_SIZE && Math.abs(point.y - handles.ne.y) <= HANDLE_SIZE) return 'ne';
-        if (Math.abs(point.x - handles.sw.x) <= HANDLE_SIZE && Math.abs(point.y - handles.sw.y) <= HANDLE_SIZE) return 'sw';
-        if (Math.abs(point.x - handles.rotate.x) <= HANDLE_SIZE && Math.abs(point.y - handles.rotate.y) <= HANDLE_SIZE) return 'rotate';
+        if (Math.abs(point.x - handles.se.x) <= hitZone && Math.abs(point.y - handles.se.y) <= hitZone) return 'se';
+        if (Math.abs(point.x - handles.nw.x) <= hitZone && Math.abs(point.y - handles.nw.y) <= hitZone) return 'nw';
+        if (Math.abs(point.x - handles.ne.x) <= hitZone && Math.abs(point.y - handles.ne.y) <= hitZone) return 'ne';
+        if (Math.abs(point.x - handles.sw.x) <= hitZone && Math.abs(point.y - handles.sw.y) <= hitZone) return 'sw';
+        if (Math.abs(point.x - handles.rotate.x) <= hitZone && Math.abs(point.y - handles.rotate.y) <= hitZone) return 'rotate';
         
         return null;
     }, [getHandles]);
@@ -101,6 +109,28 @@ const CanvasScene = ({
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         const point = getMouseCoords(e);
         const selected = shapesRef.current.find(s => s.id === selectedIdRef.current);
+        
+        const isEditing = editingShapeIdRef.current === selectedIdRef.current;
+        
+        if (isEditing && selected) {
+            const controlPoint = ControlPointsEditor.hitTest(selected, point);
+            if (controlPoint) {
+                e.preventDefault();
+                isDragging.current = true;
+                dragStart.current = point;
+                dragShape.current = selected;
+                dragType.current = 'control-point';
+                dragControlPointIndex.current = controlPoint.index;
+                
+                const points = ControlPointsEditor.getControlPoints(selected);
+                if (points) {
+                    dragStartTransform.current = {
+                        points: points.map(p => ({ ...p }))
+                    };
+                }
+                return;
+            }
+        }
 
         if (selected) {
             const handle = hitTestHandle(selected, point);
@@ -119,6 +149,8 @@ const CanvasScene = ({
                     rotation: selected.transform.rotation
                 };
                 return;
+            } else {
+                onSelect?.(null);
             }
         }
 
@@ -153,6 +185,9 @@ const CanvasScene = ({
         if (dragType.current === 'move') {
             shape.transform.x = start.x + dx;
             shape.transform.y = start.y + dy;
+            if (onShapesChange) {
+                onShapesChange([...shapesRef.current]);
+            }
             return;
         }
         
@@ -161,55 +196,70 @@ const CanvasScene = ({
             const startAngle = Math.atan2(dragStart.current.y - center.y, dragStart.current.x - center.x);
             const currentAngle = Math.atan2(point.y - center.y, point.x - center.x);
             shape.transform.rotation = start.rotation + (currentAngle - startAngle);
+            if (onShapesChange) {
+                onShapesChange([...shapesRef.current]);
+            }
+            return;
+        }
+        
+        if (dragType.current === 'control-point' && dragControlPointIndex.current !== null) {
+            const index = dragControlPointIndex.current;
+            const points = ControlPointsEditor.getControlPoints(shape);
+            if (points && points[index]) {
+                const localPoint = shape.transformPointToLocal(point.x, point.y);
+               
+                if ('setControlPoint' in shape) {
+                    (shape as any).setControlPoint(index, localPoint);
+                    if (onShapesChange) {
+                        onShapesChange([...shapesRef.current]);
+                    }
+                }
+            }
             return;
         }
  
+
         if (dragType.current === 'resize' && dragHandle.current) {
-            const bounds = shape.getBounds();
-            const baseWidth = (bounds.maxX - bounds.minX) / start.scaleX;
-            const baseHeight = (bounds.maxY - bounds.minY) / start.scaleY;
-            
-            if (baseWidth <= 0 || baseHeight <= 0) return;
-            
-            const sensitivity = 0.5;
-            const minScale = 0.1;
+            const sensitivity = 0.02; 
+            const minScale = 0.5;
             const handle = dragHandle.current;
             
             switch (handle) {
                 case 'se':
-                    shape.transform.scaleX = Math.max(minScale, start.scaleX + (dx / baseWidth) * sensitivity);
-                    shape.transform.scaleY = Math.max(minScale, start.scaleY + (dy / baseHeight) * sensitivity);
+                    shape.transform.scaleX = Math.max(minScale, start.scaleX + dx * sensitivity);
+                    shape.transform.scaleY = Math.max(minScale, start.scaleY + dy * sensitivity);
                     break;
                 case 'nw':
-                    shape.transform.scaleX = Math.max(minScale, start.scaleX - (dx / baseWidth) * sensitivity);
-                    shape.transform.scaleY = Math.max(minScale, start.scaleY - (dy / baseHeight) * sensitivity);
+                    shape.transform.scaleX = Math.max(minScale, start.scaleX - dx * sensitivity);
+                    shape.transform.scaleY = Math.max(minScale, start.scaleY - dy * sensitivity);
                     shape.transform.x = start.x + dx / 2;
                     shape.transform.y = start.y + dy / 2;
                     break;
                 case 'ne':
-                    shape.transform.scaleX = Math.max(minScale, start.scaleX + (dx / baseWidth) * sensitivity);
-                    shape.transform.scaleY = Math.max(minScale, start.scaleY - (dy / baseHeight) * sensitivity);
+                    shape.transform.scaleX = Math.max(minScale, start.scaleX + dx * sensitivity);
+                    shape.transform.scaleY = Math.max(minScale, start.scaleY - dy * sensitivity);
                     shape.transform.y = start.y + dy / 2;
                     break;
                 case 'sw':
-                    shape.transform.scaleX = Math.max(minScale, start.scaleX - (dx / baseWidth) * sensitivity);
-                    shape.transform.scaleY = Math.max(minScale, start.scaleY + (dy / baseHeight) * sensitivity);
+                    shape.transform.scaleX = Math.max(minScale, start.scaleX - dx * sensitivity);
+                    shape.transform.scaleY = Math.max(minScale, start.scaleY + dy * sensitivity);
                     shape.transform.x = start.x + dx / 2;
                     break;
             }
+            if (onShapesChange) {
+                onShapesChange([...shapesRef.current]);
+            }
         }
-    }, []);
+    }, [onShapesChange]);
 
     const handleMouseUp = useCallback(() => {
-        if (isDragging.current && dragShape.current && onShapesChange) {
-            onShapesChange([...shapesRef.current]);
-        }
         isDragging.current = false;
         dragShape.current = null;
         dragType.current = null;
         dragHandle.current = null;
+        dragControlPointIndex.current = null;
         dragStartTransform.current = null;
-    }, [onShapesChange]);
+    }, []);
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (e.key === 'Delete' && selectedIdRef.current && onShapesChange) {
@@ -248,11 +298,13 @@ const CanvasScene = ({
                 }
                 
                 const currentSelectedId = selectedIdRef.current;
+                const currentEditingId = editingShapeIdRef.current;
+                
                 if (currentSelectedId) {
                     const selectedShape = shapesRef.current.find(s => s.id === currentSelectedId);
                     if (selectedShape) {
                         const bounds = selectedShape.getBounds();
-                        const outlineColor = { r: 0, g: 120, b: 255, a: 200 };
+                        const outlineColor = { r: 41, g: 34, b: 77, a: 200 };
        
                         r.strokeLine(bounds.minX, bounds.minY, bounds.maxX, bounds.minY, outlineColor, 2);
                         r.strokeLine(bounds.maxX, bounds.minY, bounds.maxX, bounds.maxY, outlineColor, 2);
@@ -260,14 +312,21 @@ const CanvasScene = ({
                         r.strokeLine(bounds.minX, bounds.maxY, bounds.minX, bounds.minY, outlineColor, 2);
                         
                         const center = selectedShape.getCenter();
-                        const handleColor = { r: 255, g: 255, b: 255, a: 200 };
-                        const rotateColor = { r: 255, g: 80, b: 80, a: 200 };
+                        const handleColor = { r: 41, g: 34, b: 77, a: 200 };
+                        const rotateColor = { r: 106, g: 90, b: 205, a: 255 };
                         
                         r.fillCircle(bounds.maxX, bounds.maxY, HANDLE_SIZE, handleColor);
                         r.fillCircle(bounds.minX, bounds.minY, HANDLE_SIZE, handleColor);
                         r.fillCircle(bounds.maxX, bounds.minY, HANDLE_SIZE, handleColor);
                         r.fillCircle(bounds.minX, bounds.maxY, HANDLE_SIZE, handleColor);
                         r.fillCircle(center.x, bounds.minY - ROTATE_HANDLE_DISTANCE, HANDLE_SIZE, rotateColor);
+                    }
+                }
+                
+                if (currentEditingId) {
+                    const editingShape = shapesRef.current.find(s => s.id === currentEditingId);
+                    if (editingShape) {
+                        ControlPointsEditor.draw(r, editingShape);
                     }
                 }
                 

@@ -41,6 +41,10 @@ export class CubicBezier extends Shape {
         }
         return points;
     }
+    getLocalPoints(): Point2D[] {
+        return this.flattenLocal();
+    }
+
 
     getDevicePoints(segments: number = 200): Point2D[] {
         const matrix = this.getLocalToDeviceMatrix();

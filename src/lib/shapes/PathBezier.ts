@@ -23,6 +23,21 @@ export class PathBezier extends Shape {
         this.closed = closed;
     }
 
+
+    getLocalPoints(): Point2D[] {
+        return this.flattenLocal(60);
+    }
+
+    getControlPoints(): Point2D[] {
+        return this.points.map(p => ({ ...p }));
+    }
+
+    setControlPoint(index: number, localPt: Point2D): void {
+        if (index >= 0 && index < this.points.length) {
+            this.points[index] = { ...localPt };
+        }
+    }
+
     private catmullRomToBezier(p0: Point2D, p1: Point2D, p2: Point2D, p3: Point2D): Point2D[] {
         const tension = 0.5;
         return [
@@ -179,18 +194,10 @@ export class PathBezier extends Shape {
         return { minX, minY, maxX, maxY };
     }
 
-    getControlPoints(): Point2D[] {
-        return this.points.map(p => ({ ...p }));
-    }
     getClosed(): boolean {
         return this.closed;
     }
 
-    setControlPoint(index: number, localPt: Point2D): void {
-        if (index >= 0 && index < this.points.length) {
-            this.points[index] = { ...localPt };
-        }
-    }
 
     addPoint(localPt: Point2D, index?: number): void {
         if (index !== undefined && index >= 0 && index <= this.points.length) {
