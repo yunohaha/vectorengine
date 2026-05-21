@@ -233,7 +233,6 @@ export class RasterRenderer {
 
         let intery = yend + gradient;
         
-        // Обработка конечной точки
         xend = Math.round(x1);
         yend = y1 + gradient * (xend - x1);
         xgap = fpart(x1 + 0.5);
