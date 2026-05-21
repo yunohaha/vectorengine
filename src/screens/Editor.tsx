@@ -4,7 +4,6 @@ import '../style.css';
 import CanvasScene from '../components/CanvasScene';
 import { type LineAlg } from '../lib/raster/RasterRenderer'; 
 import type { Shape } from '../lib/shapes/Shape';
-import type { Point2D } from '../lib/math/mat3';
 import { Rect } from '../lib/shapes/Rect';
 import { Line } from '../lib/shapes/Line';
 import { Oval } from '../lib/shapes/Oval';
