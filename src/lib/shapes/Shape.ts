@@ -30,6 +30,11 @@ export abstract class Shape {
     transform: Transform;
     style:ShapeStyle;
 
+    private cachedBounds: Bounds | null = null;
+    private cachedCenter: Point2D | null = null;
+    private transformVersion: number = 0;
+    private currentTransformVersion: number = 1;
+
     constructor(transform?: Partial<Transform>, style?: Partial<ShapeStyle>) {
         this.id = crypto.randomUUID();
         this.transform = {
@@ -47,6 +52,18 @@ export abstract class Shape {
             strokeOpacity: style?.strokeOpacity ?? 1,
         };
     }
+
+    protected invalidateCache(): void {
+        this.transformVersion++;
+        this.cachedBounds = null;
+        this.cachedCenter = null;
+    }
+
+    setTransform(updates: Partial<Transform>): void {
+        Object.assign(this.transform, updates);
+        this.invalidateCache();
+    }
+
 
     getLocalToDeviceMatrix(): Mat3 {
         const {x, y, rotation, scaleX, scaleY } = this.transform;
@@ -69,11 +86,17 @@ export abstract class Shape {
     }
 
     getCenter(): Point2D {
-         const bounds = this.getBounds();
-            return {
-                x: (bounds.minX + bounds.maxX) / 2,
-                y: (bounds.minY + bounds.maxY) / 2,
-            };
+        if (this.cachedCenter && this.transformVersion === this.currentTransformVersion) {
+            return this.cachedCenter;
+        }
+
+        const bounds = this.getBounds();
+        this.cachedCenter = {
+            x: (bounds.minX + bounds.maxX) / 2,
+            y: (bounds.minY + bounds.maxY) / 2,
+        };
+        this.currentTransformVersion = this.transformVersion;
+        return this.cachedCenter;
     }
 
     resizeFromDeviceAABB(minX: number, minY: number, maxX: number, maxY: number): void {
@@ -90,6 +113,8 @@ export abstract class Shape {
         
         if (oldWidth > 0) this.transform.scaleX *= newWidth / oldWidth;
         if (oldHeight > 0) this.transform.scaleY *= newHeight / oldHeight;
+
+        this.invalidateCache();
     }
 
     setBounds(minX: number, minY: number, maxX: number, maxY: number): void {
