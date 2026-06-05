@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import '../style.css';
 import CanvasScene from '../components/CanvasScene';
@@ -11,6 +11,9 @@ import { Triangle } from '../lib/shapes/Triangle';
 import { QuadraticBezier } from '../lib/shapes/QuadraticBezier';
 import { CubicBezier } from '../lib/shapes/CubicBezier';
 import { PathBezier } from '../lib/shapes/PathBezier';
+
+import { initStorage, saveProject, loadProject } from '../lib/projectStorage';
+import { restoreShapes } from '../lib/shapeFactory';
 
 import lineIcon from '../img/line.svg';
 import rectIcon from '../img/rect.svg';
@@ -26,6 +29,11 @@ const Editor: React.FC = () => {
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingShapeId, setEditingShapeId] = useState<string | null>(null);
+  
+  const [projectName, setProjectName] = useState<string>('Новый проект');
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const getRandomPosition = () => {
     const minX = 150;
@@ -38,6 +46,45 @@ const Editor: React.FC = () => {
       rotation: Math.random() * Math.PI * 2
     };
   };
+
+  useEffect(() => {
+    const initialize = async () => {
+      await initStorage();
+    };
+    initialize();
+  }, []);
+
+  useEffect(() => {
+    const loadProjectIfExists = async () => {
+      setIsLoading(true);
+      
+      if (id && id !== 'new') {
+        const project = await loadProject(id);
+        if (project) {
+          setProjectId(project.metadata.id);
+          setProjectName(project.metadata.name);
+          setLineAlg(project.lineAlgorithm as LineAlg);
+          const restored = restoreShapes(project.shapes);
+          setShapes(restored);
+          setSelectedId(null);
+          console.log(`Проект "${project.metadata.name}" загружен`);
+        } else {
+          console.log(`Проект ${id} не найден, создаем новый`);
+          setProjectId(null);
+          setProjectName('Новый проект');
+        }
+      } else {
+        setProjectId(null);
+        setProjectName('Новый проект');
+        setShapes([]);
+        setSelectedId(null);
+      }
+      
+      setIsLoading(false);
+    };
+    
+    loadProjectIfExists();
+  }, [id]);
 
   const deleteShape = useCallback((id: string) => {
     setShapes(prev => prev.filter(shape => shape.id !== id));
@@ -61,13 +108,59 @@ const Editor: React.FC = () => {
     });
   }, []);
 
+  const handleSave = async () => {
+    if (isSaving) return;
+    
+    setIsSaving(true);
+    
+    try {
+      let currentProjectId = projectId;
+      
+      if (!currentProjectId) {
+        currentProjectId = crypto.randomUUID();
+        setProjectId(currentProjectId);
+        setProjectName('Новый проект');
+        navigate(`/editor/${currentProjectId}`, { replace: true });
+      }
+      
+      const projectData = {
+        metadata: {
+          id: currentProjectId,
+          name: projectName,
+          createdAt: projectId ? (await loadProject(currentProjectId))?.metadata.createdAt || new Date().toISOString() : new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        lineAlgorithm: lineAlg,
+        shapes: shapes.map(shape => shape.toJSON())
+      };
+      
+      await saveProject(projectData);
+      console.log('Проект сохранен');
+      
+      const saveBtn = document.querySelector('.toolbar-btn.primary');
+      if (saveBtn) {
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = 'Сохранено';
+        setTimeout(() => {
+          saveBtn.textContent = originalText;
+        }, 1500);
+      }
+      
+    } catch (error) {
+      console.error('Ошибка сохранения:', error);
+      alert('Не удалось сохранить проект. Проверьте права доступа к папке Документы.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const addRect = () => {
     const pos = getRandomPosition();
     const rect = new Rect(120, 80,
       { x: pos.x, y: pos.y, rotation: pos.rotation },
       { fillStyle: '#da7fd2', fillOpacity: 0.7, strokeStyle: '#300428', strokeWidth: 2, strokeOpacity: 1 }
     );
-    setShapes([...shapes, rect]);
+    setShapes(prev => [...prev, rect]);
     setSelectedId(rect.id);
   };
 
@@ -77,7 +170,7 @@ const Editor: React.FC = () => {
       { x: pos.x, y: pos.y, rotation: pos.rotation },
       { strokeStyle: '#36032f', strokeWidth: 3, strokeOpacity: 1 }
     );
-    setShapes([...shapes, line]);
+    setShapes(prev => [...prev, line]);
     setSelectedId(line.id);
   };
 
@@ -87,7 +180,7 @@ const Editor: React.FC = () => {
       { x: pos.x, y: pos.y, rotation: pos.rotation },
       { fillStyle: '#e209ff', fillOpacity: 0.7, strokeStyle: '#333', strokeWidth: 2, strokeOpacity: 1 }
     );
-    setShapes([...shapes, oval]);
+    setShapes(prev => [...prev, oval]);
     setSelectedId(oval.id);
   };
 
@@ -97,7 +190,7 @@ const Editor: React.FC = () => {
       { x: pos.x, y: pos.y, rotation: pos.rotation },
       { fillStyle: '#5d8bdf', fillOpacity: 0.7, strokeStyle: '#333', strokeWidth: 2, strokeOpacity: 1 }
     );
-    setShapes([...shapes, triangle]);
+    setShapes(prev => [...prev, triangle]);
     setSelectedId(triangle.id);
   };
 
@@ -110,7 +203,7 @@ const Editor: React.FC = () => {
       { x: pos.x, y: pos.y, rotation: pos.rotation },
       { strokeStyle: '#471b99', strokeWidth: 3, strokeOpacity: 1 }
     );
-    setShapes([...shapes, bezier]);
+    setShapes(prev => [...prev, bezier]);
     setSelectedId(bezier.id);
   };
 
@@ -124,7 +217,7 @@ const Editor: React.FC = () => {
       { x: pos.x, y: pos.y, rotation: 0 },
       { strokeStyle: '#3b0f04', strokeWidth: 3, strokeOpacity: 1 }
     );
-    setShapes([...shapes, bezier]);
+    setShapes(prev => [...prev, bezier]);
     setSelectedId(bezier.id);
   };
 
@@ -137,7 +230,7 @@ const Editor: React.FC = () => {
       { x: pos.x, y: pos.y, rotation: 0 },
       { fillOpacity: 0, strokeStyle: '#e66fb4', strokeWidth: 3, strokeOpacity: 1 }
     );
-    setShapes([...shapes, path]);
+    setShapes(prev => [...prev, path]);
     setSelectedId(path.id);
   };
 
@@ -147,9 +240,18 @@ const Editor: React.FC = () => {
     }
   };
   
-
   const selectedShape = shapes.find(s => s.id === selectedId);
   const isEditingMode = editingShapeId === selectedId;
+
+  if (isLoading) {
+    return (
+      <div className="editor-container">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <p>Загрузка проекта...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="editor-container">
@@ -158,9 +260,15 @@ const Editor: React.FC = () => {
           ← Назад
         </button>
         <h2 className="editor-title">
-          {id === 'new' ? 'Новый проект' : `Редактирование проекта №${id}`}
+          {projectName}
         </h2>
-        <button className="toolbar-btn primary">Сохранить</button>
+        <button 
+          className="toolbar-btn primary" 
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? 'Сохранение...' : 'Сохранить'}
+        </button>
       </header>
 
       <div className="editor-main">

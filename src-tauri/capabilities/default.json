@@ -5,6 +5,39 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "opener:default"
+    "opener:default",
+    "dialog:default",
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [
+        { "path": "$DOCUMENT/vectorengine" },
+        { "path": "$DOCUMENT/vectorengine/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        { "path": "$DOCUMENT/vectorengine/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        { "path": "$DOCUMENT/vectorengine/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [
+        { "path": "$DOCUMENT/vectorengine" },
+        { "path": "$DOCUMENT/vectorengine/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        { "path": "$DOCUMENT/vectorengine/**" }
+      ]
+    }
   ]
 }

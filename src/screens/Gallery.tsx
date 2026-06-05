@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../style.css';
-
+import { initStorage, loadProjectIndex, saveProject } from '../lib/projectStorage';
 
 interface Project {
   id: string;     
@@ -10,25 +10,56 @@ interface Project {
 }
 
 const Gallery: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>([
-    { id: '1', name: 'Первая картиночка', date: new Date().toISOString() }
-  ]);
-  
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isCreating, setIsCreating] = useState(false);
-  
   const [newProjectName, setNewProjectName] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const addProject = () => {
-    if (newProjectName.trim()) {
-      const newProject: Project = {
-        id: Date.now().toString(),  
+  useEffect(() => {
+    const loadProjects = async () => {
+      setIsLoading(true);
+      await initStorage();
+      const index = await loadProjectIndex();
+      
+      const loadedProjects = index.map(p => ({
+        id: p.id,
+        name: p.name,
+        date: p.updatedAt
+      }));
+      
+      setProjects(loadedProjects);
+      setIsLoading(false);
+    };
+    
+    loadProjects();
+  }, []);
+
+  const createProject = async () => {
+    if (!newProjectName.trim()) return;
+    
+    const newId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    
+    const newProject: Project = {
+      id: newId,
+      name: newProjectName,
+      date: now
+    };
+    
+    await saveProject({
+      metadata: {
+        id: newId,
         name: newProjectName,
-        date: new Date().toISOString()
-      };
-      setProjects([...projects, newProject]);
-      setNewProjectName('');
-      setIsCreating(false);
-    }
+        createdAt: now,
+        updatedAt: now
+      },
+      lineAlgorithm: 'bresenham',
+      shapes: []
+    });
+    
+    setProjects([...projects, newProject]);
+    setNewProjectName('');
+    setIsCreating(false);
   };
 
   return (
@@ -47,16 +78,20 @@ const Gallery: React.FC = () => {
               placeholder="Название проекта"
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addProject()}
+              onKeyPress={(e) => e.key === 'Enter' && createProject()}
               autoFocus
             />
-            <button onClick={addProject}>Создать</button>
+            <button onClick={createProject}>Создать</button>
             <button onClick={() => setIsCreating(false)}>Отмена</button>
           </div>
         )}
       </div>
 
-      {projects.length === 0 ? (
+      {isLoading ? (
+        <div className="empty-state">
+          <p>Загрузка проектов...</p>
+        </div>
+      ) : projects.length === 0 ? (
         <div className="empty-state">
           <p>У вас пока нет проектов :/ </p>
           <button className="btn-primary" onClick={() => setIsCreating(true)}>
@@ -68,7 +103,6 @@ const Gallery: React.FC = () => {
           {projects.map(project => (
             <Link to={`/editor/${project.id}`} key={project.id} className="project-card-link">
               <div className="project-card">
-                <div className="project-card-icon">иконка</div>
                 <h3 className="project-card-title">{project.name}</h3>
                 <p className="project-card-date">
                   {new Date(project.date).toLocaleDateString('ru-RU')}
